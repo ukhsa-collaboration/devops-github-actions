@@ -14,6 +14,7 @@ runs:
         python-version: '3.12'
 
     - name: Install requirements.txt
+      shell: bash
       run: pip install -r ${{ github.action_path }}/requirements.txt
 
     - name: Find order of stacks
