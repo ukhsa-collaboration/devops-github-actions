@@ -1,0 +1,31 @@
+name: "[Data] Parse terraform.tf for allowed Terraform version"
+description: "Determine latest allowed Terraform version from a terraform.tf file"
+
+inputs:
+  tf_file:
+    description: "The path of the terraform.tf file to check for version constraints"
+    default: "terraform.tf"
+    required: false
+
+outputs:
+  tf_version:
+    description: "The Terraform version required by the terraform.tf file"
+    value: ${{ steps.tf_version.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install requirements.txt
+      shell: bash
+      run: pip install -r ${{ github.action_path }}/requirements.txt
+
+    - name: Determine Terraform version to use
+      id: tf_version
+      shell: bash
+      env:
+        TF_FILE: ${{ inputs.tf_file }}
+      run: echo "version=$(python ${{ github.action_path }}/main.py --file "$TF_FILE" )" >> $GITHUB_OUTPUT

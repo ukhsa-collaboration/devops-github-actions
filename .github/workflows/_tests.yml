@@ -24,3 +24,23 @@ jobs:
       - name: Run unit tests against Terraform Dependency Sort
         working-directory: ./.github/actions/terraform-dependency-sort
         run: python -m unittest
+
+  test_parse_terraform_version:
+    name: Test Parse Terraform Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requirements.txt
+        working-directory: ./.github/actions/parse-terraform-version
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests against Terraform Dependency Sort
+        working-directory: ./.github/actions/parse-terraform-version
+        run: python -m unittest
