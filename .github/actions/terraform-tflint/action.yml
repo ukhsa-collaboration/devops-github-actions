@@ -1,0 +1,57 @@
+name: "[Analysis] Run a TFLint scan against Terraform code"
+description: "Run TFLint to lint Terraform code"
+inputs:
+  scan_directory:
+    description: "The directory to run the TFLint scan in"
+    default: "."
+    required: false
+  download_tflint:
+    description: "Whether to download and install TFLint if it's not already available"
+    default: true
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check if TFLint is already installed
+      id: install_check
+      shell: bash
+      run: |
+        if [[ $(which tflint) ]]; then
+          echo "tflint_installed=True" >> $GITHUB_OUTPUT
+        else
+          echo "tflint_installed=False" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download and install TFLint
+      if: ${{ steps.install_check.outputs.tflint_installed == 'False' && inputs.download_tflint == 'true' }}
+      shell: bash
+      run: |
+        curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Determine provider and create .tflint.hcl
+      id: create_config
+      shell: bash
+      run: |
+        PROVIDER=$(grep -Eo 'provider \"[a-zA-Z0-9_]+\"' provider.tf | awk '{print $2}' | tr -d '"')
+        echo "Detected provider: $PROVIDER"
+        if [[ -n "$PROVIDER" ]]; then
+          echo "plugin \"${PROVIDER}\" {}" > .tflint.hcl
+          echo "plugin \"${PROVIDER}-ruleset\" {}" >> .tflint.hcl
+        else
+          echo "No provider found in provider.tf"
+        fi
+
+    - name: Initialize TFLint
+      shell: bash
+      run: tflint init
+
+    - name: Run TFLint
+      shell: bash
+      env:
+        SCAN_DIRECTORY: ${{ inputs.scan_directory }}
+      run: |
+        tflint --recursive "$SCAN_DIRECTORY"
