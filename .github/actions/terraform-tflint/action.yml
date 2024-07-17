@@ -32,20 +32,36 @@ runs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Determine provider and create .tflint.hcl
-      id: create_config
-      shell: bash
-      run: |
-        PROVIDER=$(grep -Eo 'provider \"[a-zA-Z0-9_]+\"' provider.tf | awk '{print $2}' | tr -d '"')
-        echo "Detected provider: $PROVIDER"
-        if [[ -n "$PROVIDER" ]]; then
-          echo "plugin \"${PROVIDER}\" {}" > .tflint.hcl
-          echo "plugin \"${PROVIDER}-ruleset\" {}" >> .tflint.hcl
-        else
-          echo "No provider found in provider.tf"
-        fi
+    - name: Check if .tflint.hcl exists
+        id: tflint_hcl_check
+        shell: bash
+        run: |
+          if [ -f ".tflint.hcl" ]; then
+            echo "tflint_hcl_exists=True" >> $GITHUB_ENV
+          else
+            echo "tflint_hcl_exists=False" >> $GITHUB_ENV
+          fi
+
+    - name: Create .tflint.hcl if it does not exist
+        if: ${{ steps.install_check.outputs.tflint_installed == 'False' }}
+        shell: bash
+        run: |
+          cat << EOF > .tflint.hcl
+            plugin "aws" {
+              enabled = true
+              version = "0.32.0"
+              source  = "github.com/terraform-linters/tflint-ruleset-aws"
+            }
+
+            plugin "azurerm" {
+              enabled = true
+              version = "0.26.0"
+              source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
+            }
+          EOF
 
     - name: Initialize TFLint
+      if: ${{ steps.install_check.outputs.tflint_installed == 'False' }}
       shell: bash
       run: tflint init
 
