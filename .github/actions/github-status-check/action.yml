@@ -1,0 +1,107 @@
+name: "[Data] Create or update a Github Status check"
+inputs:
+  check-run-id:
+    description: "The ID of the check to update. Will create a new check and return the ID if blank"
+    required: false
+  name:
+    description: "The name of the check"
+    required: true
+  status:
+    description: "the status of the check `queued`, `in_progress` or `completed`"
+    required: false
+    default: "in_progress"
+  title:
+    description: "the title to put on the check panel"
+    required: true
+  summary:
+    description: "The summary of the check runs current result"
+    required: true
+  details:
+    description: "The details for the check"
+    required: false
+  conclusion:
+    description: "The conclusion of the check"
+    required: false
+
+outputs:
+  check-run-id:
+    description: "The check run ID of the updated or created check"
+    value: ${{ steps.create-check.outputs.result || steps.update-check.outputs.result }}
+
+branding:
+  icon: "check-circle"
+  color: "green"
+
+runs:
+  using: "composite"
+  steps:
+    - name: create a check in_progress
+      uses: actions/github-script@v7
+      if: ${{ inputs.check-run-id == null }}
+      id: create-check
+      with:
+        result-encoding: string
+        script: |
+          const status = "${{ inputs.status }}";
+          const commitSha = "${{ github.event.pull_request.head.sha }}";
+          const name = "${{ inputs.name }}";
+          const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
+          const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+          const conclusion = "${{ inputs.conclusion }}".trim();
+          const details = `${{ inputs.details }}`;
+
+          let body = {
+            owner,
+            repo,
+            name,
+            head_sha: commitSha,
+            status,
+            output: {
+              title: "${{ inputs.title }}",
+              summary: "${{ inputs.summary }}",
+              text: details
+            }
+          };
+
+          if(conclusion !== ""){
+            body.conclusion = conclusion;
+          }
+  
+          const check = await github.rest.checks.create(body);
+          return check.data.id
+
+    - name: update existing check
+      uses: actions/github-script@v7
+      id: update-check
+      if: ${{ inputs.check-run-id != null }}
+      with:
+        result-encoding: string
+        script: |
+          const status = "${{ inputs.status }}";
+          const commitSha = "${{ github.event.pull_request.head.sha }}";
+          const name = "${{ inputs.name }}";
+          const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
+          const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+          const conclusion = "${{ inputs.conclusion }}".trim();
+          const details = `${{ inputs.details }}`;
+
+          let body = {
+            owner,
+            repo,
+            check_run_id: "${{ inputs.check-run-id }}",
+            name,
+            head_sha: commitSha,
+            status,
+            output: {
+              title: "${{ inputs.title }}",
+              summary: "${{ inputs.summary }}",
+              text: details
+            }
+          };
+
+          if(conclusion !== ""){
+            body.conclusion = conclusion;
+          }
+
+          const check = await github.rest.checks.update(body);
+          return check.data.id
