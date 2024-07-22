@@ -13,61 +13,39 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Check if TFLint is already installed
+    - name: Verify TFLint Installation
       id: install_check
       shell: bash
       run: |
-        if [[ $(which tflint) ]]; then
-          echo "tflint_installed=True" >> $GITHUB_OUTPUT
+        if command -v tflint >/dev/null 2>&1; then
+          echo "TFLint is installed."
         else
-          echo "tflint_installed=False" >> $GITHUB_OUTPUT
+          echo "TFLint is not installed in the terraform-ci container."
+          exit 1
         fi
 
-    - name: Download and install TFLint
-      if: ${{ steps.install_check.outputs.tflint_installed == 'False' && inputs.download_tflint == 'true' }}
-      shell: bash
-      run: |
-        curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
-    - name: Checkout repository
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Check if .tflint.hcl exists
-        id: tflint_hcl_check
-        shell: bash
-        run: |
-          if [ -f ".tflint.hcl" ]; then
-            echo "tflint_hcl_exists=True" >> $GITHUB_ENV
-          else
-            echo "tflint_hcl_exists=False" >> $GITHUB_ENV
-          fi
-
-    - name: Create .tflint.hcl if it does not exist
-        if: ${{ steps.install_check.outputs.tflint_installed == 'False' }}
-        shell: bash
-        run: |
-          cat << EOF > .tflint.hcl
-            plugin "aws" {
-              enabled = true
-              version = "0.32.0"
-              source  = "github.com/terraform-linters/tflint-ruleset-aws"
-            }
-
-            plugin "azurerm" {
-              enabled = true
-              version = "0.26.0"
-              source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
-            }
-          EOF
+    - name: Verify .tflint.hcl Presence
+      id: tflint_hcl_check
+      shell: bash
+      run: |
+        if [ -f ".tflint.hcl" ]; then
+          echo ".tflint.hcl file is present."
+        else
+          echo ".tflint.hcl not found in the terraform-ci container."
+          exit 1
+        fi
 
     - name: Initialize TFLint
-      if: ${{ steps.install_check.outputs.tflint_installed == 'False' }}
       shell: bash
       run: tflint init
 
-    - name: Run TFLint
+    - name: Execute TFLint Scan
       shell: bash
       env:
         SCAN_DIRECTORY: ${{ inputs.scan_directory }}
       run: |
         tflint --recursive "$SCAN_DIRECTORY"
+
