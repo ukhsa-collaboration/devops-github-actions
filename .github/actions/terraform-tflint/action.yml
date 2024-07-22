@@ -5,10 +5,6 @@ inputs:
     description: "The directory to run the TFLint scan in"
     default: "."
     required: false
-  download_tflint:
-    description: "Whether to download and install TFLint if it's not already available"
-    default: true
-    required: false
 
 runs:
   using: "composite"
@@ -48,4 +44,3 @@ runs:
         SCAN_DIRECTORY: ${{ inputs.scan_directory }}
       run: |
         tflint --recursive "$SCAN_DIRECTORY"
-

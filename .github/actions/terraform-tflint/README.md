@@ -5,7 +5,6 @@ This GitHub Action runs TFLint to lint your Terraform code, ensuring it adheres 
 ## Inputs
 
 - `scan_directory`: The directory to run the TFLint scan in. Default is `"."`.
-- `download_tflint`: Whether to download and install TFLint if it's not already available. Default is `true`.
 
 ## Outputs
 
@@ -24,5 +23,4 @@ jobs:
       - name: Run TFLint
         uses: UKHSA-Internal/devops-github-actions/.github/actions/terraform-tflint@main
         with:
-          scan_directory: "./terraform"
-          download_tflint: true
+          scan_directory: "./terraform" #Optional
