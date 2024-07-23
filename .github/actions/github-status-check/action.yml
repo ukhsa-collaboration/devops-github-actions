@@ -43,7 +43,7 @@ runs:
         result-encoding: string
         script: |
           const status = "${{ inputs.status }}";
-          const commitSha = "${{ github.event.pull_request.head.sha }}";
+          const commitSha = "${{ github.event.pull_request.head.sha || github.sha }}";
           const name = "${{ inputs.name }}";
           const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
           const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
@@ -78,7 +78,7 @@ runs:
         result-encoding: string
         script: |
           const status = "${{ inputs.status }}";
-          const commitSha = "${{ github.event.pull_request.head.sha }}";
+          const commitSha = "${{ github.event.pull_request.head.sha || github.sha }}";
           const name = "${{ inputs.name }}";
           const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
           const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
