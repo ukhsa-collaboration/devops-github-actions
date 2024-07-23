@@ -56,7 +56,8 @@ runs:
         if [[ "$SCAN_TYPE" == 'deep' ]]; then
           checkov --framework terraform_plan --download-external-modules true --deep-analysis --output cli --output sarif --output-file-path console,results.sarif --repo-root-for-plan-enrichment "$DIRECTORY" --file "$TFPLAN_FILE"
         else
-          checkov --framework terraform --hard-fail-on HIGH --output cli --output sarif --output-file-path console,results.sarif --directory "$DIRECTORY"
+          fail_alerts=$(cat ${{ github.action_path }}/high-criticals.txt | tr '\n' ',' | sed 's/,$//')
+          checkov --framework terraform --hard-fail-on "$fail_alerts" --output cli --output sarif --output-file-path console,results.sarif --directory "$DIRECTORY"
         fi
 
       # This would normally use github/codeql-action/upload-sarif@v2
