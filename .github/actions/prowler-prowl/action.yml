@@ -1,0 +1,30 @@
+name: "[Analysis] Run a Prowler scan against a cloud provider"
+description: "Run a light or deep Checkov scan"
+inputs:
+  cloud_providers:
+    description: "The cloud provider to run against. Can be a space seperated list. E.g: 'aws azure'"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Prowler
+      shell: bash
+      run: pip install prowler
+
+    - name: Prowl providers with Prowler
+      shell: bash
+      run: 
+      for provider in ${{ inputs.cloud_providers }}; do
+        prowler "$provider" --output-modes csv --compliance cis_2.0_"$provider"
+      done
+
+    - name: Upload CSV artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: prowler-csv
+        path: ./output/compliance/
