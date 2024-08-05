@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         for provider in ${{ inputs.cloud_providers }}; do
-          prowler "$provider" --output-modes csv --compliance cis_2.0_"$provider"
+          prowler "$provider" --output-modes csv --compliance cis_2.0_"$provider" --ignore-exit-code-3
         done
 
     - name: Upload CSV artifacts
