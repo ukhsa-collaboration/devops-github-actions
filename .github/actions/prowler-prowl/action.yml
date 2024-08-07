@@ -21,10 +21,10 @@ runs:
       env:
         PROVIDER: ${{ inputs.cloud_provider }}
       run: |
-        if [[ "$PROVIDER" == "aws" || "$PROVIDER" == "azure" ]]; do
-          prowler "$PROVIDER" --output-modes csv --compliance cis_2.0_"$PROVIDER" --ignore-exit-code-3
+        if [[ "$PROVIDER" == "aws" ]] || [[ "$PROVIDER" == "azure" ]]; then
+          prowler "$PROVIDER" --output-modes csv --compliance "cis_2.0_$PROVIDER" --ignore-exit-code-3
         else
-          echo "$PROVIDER" not supported
+          echo "$PROVIDER not supported"
         fi
 
     - name: Upload CSV artifacts
