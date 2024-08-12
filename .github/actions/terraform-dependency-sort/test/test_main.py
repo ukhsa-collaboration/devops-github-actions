@@ -66,6 +66,21 @@ class TestDependencyResolver(unittest.TestCase):
             ["./stack4", "./stack3", "./stack1", "./stack2"],
         )
 
+    def test_sorting_order_reverse_output(self):
+        """Ensure stacks are returned in expected order when --reverse flag is passed in"""
+        self.write_json("stack1", ["./stack3"])
+        self.write_json("stack2", ["./stack1"])
+        self.write_json("stack3", ["./stack4"])
+        self.write_json("stack4", [])
+
+        graph = process_stack_files(self.test_dir)
+        graph.resolve_dependencies()
+        sorted_nodes = graph.topological_sort(reverse=True)
+        self.assertEqual(
+            [node.name for node in sorted_nodes],
+            ["./stack2", "./stack1", "./stack3", "./stack4"],
+        )
+
     def test_multiple_stacks_no_dependencies(self):
         """Ensure multiple stacks with no dependencies don't cause errors"""
         self.write_json("stack1", [])

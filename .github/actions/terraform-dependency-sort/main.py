@@ -11,8 +11,10 @@ logging.basicConfig(level=LOG_LEVEL)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--draw", action="store_true")
+parser.add_argument("-r", "--reverse", action="store_true", help="Reverse the outputted list of stacks")
 args = parser.parse_args()
 DRAW_GRAPH = args.draw
+REVERSE_OUTPUT = args.reverse
 
 JSON_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -156,7 +158,7 @@ class Graph:
                 "Install gvgen via pip to generate a DOT file of this graph"
             )
 
-    def topological_sort(self):
+    def topological_sort(self, reverse=False):
         """
         Perform topological sorting of nodes in required order of deploy.
 
@@ -180,7 +182,11 @@ class Graph:
         for node in self.nodes.values():
             visit(node)
 
-        return sorted_nodes
+        if reverse:
+            return list(reversed(sorted_nodes))
+        else:
+           return sorted_nodes
+
 
 
 def find_stack_directories(start_dir, max_depth=2):
@@ -251,8 +257,8 @@ if __name__ == "__main__":
 
     graph = process_stack_files(start_dir)
     resolved = graph.resolve_dependencies()
-    sorted_nodes = graph.topological_sort()
-
+    sorted_nodes = graph.topological_sort(reverse=REVERSE_OUTPUT)
+    
     if DRAW_GRAPH:
         graph.generate_dot_file()
 

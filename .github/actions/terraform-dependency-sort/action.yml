@@ -1,5 +1,10 @@
 name: 'Create dependency graph'
 description: 'Graphs dependency order of Terraform stacks using dependencies.json and returns sorted order in JSON format'
+inputs:
+  reverse:
+    description: "Reverse the list of stacks. Can be required if running a terraform destroy"
+    required: false
+    default: false
 outputs:
   json_directory_list:
     description: "List of the stacks to deploy in dependency order in JSON format"
@@ -20,8 +25,7 @@ runs:
     - name: Find order of stacks
       shell: bash
       id: stack_order
-      run: echo "order=$(python ${{ github.action_path }}/main.py $draw_flags)" >> $GITHUB_OUTPUT
-
-        
-
+      run: |
+        [[ ${{ inputs.reverse}} == 'false' ]] || reverse_flag="--reverse" 
+        echo "order=$(python ${{ github.action_path }}/main.py $reverse_flag)" >> $GITHUB_OUTPUT
         
