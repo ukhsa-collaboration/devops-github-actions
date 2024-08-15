@@ -1,46 +1,74 @@
 name: "[Analysis] Run a TFLint scan against Terraform code"
 description: "Run TFLint to lint Terraform code"
 inputs:
-  scan_directory:
-    description: "The directory to run the TFLint scan in"
-    default: "."
+  ignored_rules:
+    description: "Comma-separated list of TFLint rules to disable."
+    default: "terraform_required_version,terraform_required_providers"
+    required: false
+  tflint_config:
+    description: "The absolute path of the TFLint configuration file."
+    default: "/root/.tflint.hcl"
+    required: false
+  scan_modules:
+    description: "Calls modules and emits any issues that result from the input variables."
+    default: false
+    required: false
+    type: string
+  tf_directory:
+    description: "Directory where the Terraform configuration is located. Only required when used with scan_modules."
     required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Verify TFLint Installation
-      id: install_check
-      shell: bash
-      run: |
-        if command -v tflint >/dev/null 2>&1; then
-          echo "TFLint is installed."
-        else
-          echo "TFLint is not installed in the terraform-ci container."
-          exit 1
-        fi
-
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: Verify .tflint.hcl Presence
+    - name: Verify TFLint configuration file presence
       id: tflint_hcl_check
       shell: bash
       run: |
-        if [ -f ".tflint.hcl" ]; then
-          echo ".tflint.hcl file is present."
+        if [ -f "${{ inputs.tflint_config }}" ]; then
+          echo "${{ inputs.tflint_config }} file is present."
         else
-          echo ".tflint.hcl not found in the terraform-ci container."
+          echo "Error: ${{ inputs.tflint_config }} not found in the workspace."
           exit 1
         fi
 
-    - name: Initialize TFLint
+    - name: Verify and initialize TFLint with specified configuration file
+      id: install_check
       shell: bash
-      run: tflint init
-
-    - name: Execute TFLint Scan
-      shell: bash
-      env:
-        SCAN_DIRECTORY: ${{ inputs.scan_directory }}
       run: |
-        tflint --recursive "$SCAN_DIRECTORY"
+        echo "Initiliaze TFLint with ${{ inputs.tflint_config }}"
+        tflint --init --config "${{ inputs.tflint_config }}"
+
+        echo "Verify TFLint installation"
+        tflint --version --config "${{ inputs.tflint_config }}"
+
+    - name: Download dependent Terraform modules
+      if: ${{ inputs.scan_modules == 'true' }}
+      working-directory: ${{ inputs.tf_directory }}
+      shell: bash
+      run: |
+        if [ -n "$SSH_DEPLOY_KEY" ]; then
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          eval $(ssh-agent -s)
+          echo "$SSH_DEPLOY_KEY" | tr -d '\r' | ssh-add -
+        fi
+        
+        echo "Download dependent Terraform modules for stack"
+        terraform get
+
+    - name: Execute TFLint scan
+      shell: bash
+      run: |
+        if [ "${{ inputs.scan_modules }}" == "true" ]; then
+          echo "Run TFLint against all modules."
+          call_module_option="all"
+          
+          echo "Switch to Terraform stack dir: ${{ inputs.tf_directory }}"
+          cd "${{ inputs.tf_directory }}"
+        else
+          call_module_option="local"
+        fi
+        
+        tflint --recursive --call-module-type=$call_module_option --config "${{ inputs.tflint_config }}" \
+          --disable-rule $(echo "${{ inputs.ignored_rules }}" | sed 's/,/ --disable-rule /g')
