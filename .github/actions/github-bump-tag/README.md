@@ -26,12 +26,10 @@ jobs:
         fetch-depth: '0'
 
     - name: Bump version and push tag
-      uses: UKHSA-Internal/devops-github-actions/.github/action/github-bump-tag@v1
+      uses: UKHSA-Internal/devops-github-actions/.github/actions/github-bump-tag@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WITH_V: true
-        PRERELEASE: true
-
 ```
 
 Is recommended to use on `pull_request` instead of on commit to main.
