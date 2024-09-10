@@ -15,13 +15,9 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
     - name: Install requirements.txt
       shell: bash
-      run: pip install -r ${{ github.action_path }}/requirements.txt
+      run: pip install -r  ${{ github.action_path }}/requirements.txt
 
     - name: Determine Terraform version to use
       id: tf_version
