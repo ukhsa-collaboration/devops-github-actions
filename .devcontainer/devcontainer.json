@@ -1,0 +1,15 @@
+{
+	"name": "UKHSA IaC DevContainer",
+	"image": "ghcr.io/ukhsa-internal/devops-terraform-ci:latest",
+	"remoteUser": "root",
+	"overrideCommand": true,
+	"customizations": {
+	  "vscode": {
+	  	"extensions": [
+		  "hashicorp.terraform",
+		  "ms-python.python"
+		]
+	  }
+	}
+}
+

@@ -149,7 +149,7 @@ def extract_version_constraints(filename):
         with open(filename, "r") as file:
             content = file.read()
             match = re.search(
-                r'terraform\s*{\s*required_version\s*=\s*"([^"]+)"\s*}',
+                r'required_version\s*=\s*"([^"]+)"',
                 content,
                 re.DOTALL,
             )

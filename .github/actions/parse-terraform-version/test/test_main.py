@@ -41,6 +41,23 @@ class TestParseTerraformVersion(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
+        read_data='''terraform {
+                        required_providers {
+                            azurerm = {
+                                source  = "hashicorp/azurerm"
+                                version = "~> 4.0"
+                            }
+                        }
+                        required_version = ">= 1.9"
+                    }''',
+    )
+    def test_extract_version_constraints_with_providers(self, mock_file):
+        constraints = extract_version_constraints("terraform.tf")
+        self.assertIn(">= 1.9", constraints)
+
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
         read_data='terraform { required_version = ">= 0.12.0" }',
     )
     @patch("requests.get")
