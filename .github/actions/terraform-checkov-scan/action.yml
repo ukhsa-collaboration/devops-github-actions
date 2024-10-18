@@ -17,6 +17,11 @@ inputs:
     description: "The directory to run the scan in or to use as the REPO_ROOT_FOR_PLAN_ENRICHMENT"
     default: "."
     required: false
+  check_serverless:
+    description: "Include serverless framework scanning"
+    default: false
+    required: false
+  
 
 runs:
   using: "composite"
@@ -52,9 +57,12 @@ runs:
         SCAN_TYPE: ${{ inputs.scan_type }}
         TFPLAN_FILE: ${{ inputs.tfplan_file }}
         DIRECTORY: ${{ inputs.scan_directory }}
+        CHECK_SERVERLESS: ${{ inputs.check_serverless }}
       run: |
         if [[ "$SCAN_TYPE" == 'deep' ]]; then
           checkov --framework terraform_plan --download-external-modules true --deep-analysis --output cli --output sarif --output-file-path console,results.sarif --repo-root-for-plan-enrichment "$DIRECTORY" --file "$TFPLAN_FILE"
+        elif [[ "$CHECK_SERVERLESS" == 'true' ]]; then
+          checkov --framework serverless --output cli --output sarif --output-file-path console,results.sarif --directory "$DIRECTORY"
         else
           fail_alerts=$(cat "$GITHUB_ACTION_PATH"/high-criticals.txt | tr '\n' ',' | sed 's/,$//')
           checkov --framework terraform --hard-fail-on "$fail_alerts" --output cli --output sarif --output-file-path console,results.sarif --directory "$DIRECTORY"
