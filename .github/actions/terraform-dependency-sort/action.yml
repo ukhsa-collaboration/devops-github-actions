@@ -26,6 +26,7 @@ runs:
       shell: bash
       id: stack_order
       run: |
-        [[ ${{ inputs.reverse}} == 'false' ]] || reverse_flag="--reverse" 
+        set -Eeuo pipefail
+        [[ ${{ inputs.reverse}} == 'false' ]] || reverse_flag="--reverse"
         echo "order=$(python ${{ github.action_path }}/main.py $reverse_flag)" >> $GITHUB_OUTPUT
         
