@@ -32,7 +32,7 @@ runs:
 
     - name: Install requirements.txt
       shell: bash
-      run: pip install -r ${{ github.action_path }}/requirements.txt --root-user-action ignore
+      run: pip install -r ${{ github.action_path }}/requirements.txt
 
     - name: Determine Terraform version to use
       id: tf_version
