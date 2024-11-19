@@ -15,8 +15,18 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - name: Check if python is already installed
+      id: install_check
+      shell: bash
+      run: |
+        if [[ $(which python) && $(which pip) ]]; then
+          echo "python_installed=True" >> $GITHUB_OUTPUT
+        else
+          echo "python_installed=False" >> $GITHUB_OUTPUT
+        fi
+
+    - uses: actions/setup-python@v5
+      if: ${{ steps.install_check.outputs.python_installed == 'False' }}
       with:
         python-version: '3.12'
 
