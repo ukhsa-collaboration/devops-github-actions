@@ -15,6 +15,7 @@ parser.add_argument("-r", "--reverse", action="store_true", help="Reverse the ou
 args = parser.parse_args()
 DRAW_GRAPH = args.draw
 REVERSE_OUTPUT = args.reverse
+DEFAULT_RUNNER_LABEL = "ubuntu-latest"
 
 JSON_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -32,6 +33,14 @@ JSON_SCHEMA = {
                 }
             },
             "required": ["paths"],
+        },
+        "runner-label": {
+            "type": "string",
+            "default": DEFAULT_RUNNER_LABEL
+        },
+        "planned-changes": {
+            "type": "boolean",
+            "default": True
         }
     },
     "required": ["dependencies"],
@@ -46,8 +55,10 @@ else:
 
 
 class Node:
-    def __init__(self, name: str, base_dir: str):
+    def __init__(self, name: str, base_dir: str, runner_label=DEFAULT_RUNNER_LABEL, planned_changes=True):
         self.name = name
+        self.runner_label = runner_label
+        self.planned_changes = planned_changes
         self.edges = []
         self.valid_dir = self._verify_dir_exists(base_dir)
         logger.debug(f"{name} was created as a Node object!")
@@ -69,9 +80,6 @@ class Node:
 
         Args:
             edge (Node): The node to add as a dependency.
-
-        Raises:
-            Exception: Raises an exception if a circular reference is detected
         """
         self.edges.append(edge)
         if DRAW_GRAPH:
@@ -108,20 +116,43 @@ class Graph:
         self.nodes = {}
         self.base_dir = base_dir
 
-    def add_node(self, stack_dir: str, dependencies: list):
+    def add_node(self, stack_dir: str, dependencies: list, runner_label=DEFAULT_RUNNER_LABEL, planned_changes=True):
         """
         Add a node to the graph.
 
         Args:
             stack_dir (str): Path to the directory which the Node represents.
             dependencies (list): A list of dependencies extracted from the dependencies.json file
+            runner_label (str): The runner label associated with this stack.
+            planned_changes (bool): Boolean value to determine if terraform changes are required, or not.
 
         Raises:
             Exception: Raises an exception if a dependency is referenced in the dependencies.json but has no physical directory
         """
         if stack_dir not in self.nodes:
-            self.nodes[stack_dir] = Node(stack_dir, self.base_dir)
-
+            self.nodes[stack_dir] = Node(stack_dir, 
+                                         self.base_dir, 
+                                         runner_label=runner_label, 
+                                         planned_changes=planned_changes)
+            logger.debug(f"Node '{stack_dir}' added with runner_label '{runner_label}'")
+        else:
+            # Node already exists through previous stack dependency adding the node, which would use the default values.
+            # Now update the runner_label when processing stack's own dependencies.json file.
+            node = self.nodes[stack_dir]
+            if node.runner_label != runner_label:
+                logger.warning(
+                    f"Runner label mismatch for '{stack_dir}'. "
+                    f"Existing: '{node.runner_label}', New: '{runner_label}'. Updating to new value."
+                )
+                node.runner_label = runner_label
+            
+            if node.planned_changes != planned_changes:
+                logger.warning(
+                    f"Runner label mismatch for '{stack_dir}'. "
+                    f"Existing: '{node.planned_changes}', New: '{planned_changes}'. Updating to new value."
+                )
+                node.planned_changes = planned_changes
+        
         node = self.nodes[stack_dir]
         for dep in dependencies:
             if dep not in self.nodes:
@@ -163,7 +194,7 @@ class Graph:
         Perform topological sorting of nodes in required order of deploy.
 
         Args:
-            nodes (iterable): Iterable of Node objects representing nodes in the graph.
+            reverse (bool): Whether to reverse the sorted order.
 
         Returns:
             list: List of Node objects in topologically sorted order.
@@ -185,13 +216,12 @@ class Graph:
         if reverse:
             return list(reversed(sorted_nodes))
         else:
-           return sorted_nodes
-
+            return sorted_nodes
 
 
 def find_stack_directories(start_dir, max_depth=2):
     """
-    Find all Terraform stacks specified depth in the directory tree.
+    Find all Terraform stacks within specified depth in the directory tree.
 
     Args:
         start_dir (str): The starting directory to search from.
@@ -200,7 +230,6 @@ def find_stack_directories(start_dir, max_depth=2):
     Returns:
         list: List of file paths to Terraform stack directories found.
     """
-
     results = []
     for root, _, files in os.walk(start_dir):
         depth = root[len(start_dir) :].count(os.sep)
@@ -213,22 +242,44 @@ def find_stack_directories(start_dir, max_depth=2):
 
 def extract_dependencies_from_file(file_path):
     """
-    Extract dependencies from a 'dependencies.json' file.
+    Extract configuration from a 'dependencies.json' file.
 
     Args:
         file_path (str): Path to the 'dependencies.json' file.
 
     Returns:
-        list: List of dependencies extracted from the file.
+        dict: A dictionary containing:
+            - 'paths': List of dependency paths.
+            - 'runner-label': The dependent GitHub runner label the stack should run from.
+            - 'planned-changes': Used to store dynamic value on whether Terraform changes are planned, or not.
     """
     with open(file_path, "r") as file:
         try:
             data = json.load(file)
             validate(data, JSON_SCHEMA)
-        except (ValidationError, json.decoder.JSONDecodeError) as e:
-            raise ValidationError(f"{file_path} failed to validate against the JSON schema") from e
+        except ValidationError as e:
+            raise ValidationError(f"{file_path} failed to validate against the JSON schema: {e.message}") from e
+        except json.decoder.JSONDecodeError as e:
+            raise ValidationError(f"{file_path} contains invalid JSON: {e.msg}") from e
+        
+        planned_changes = data.get("planned-changes", True)
+        runner_label = data.get("runner-label", DEFAULT_RUNNER_LABEL)
+        
+        if runner_label not in [DEFAULT_RUNNER_LABEL, "self-hosted"]:
+            raise ValidationError(
+                f"Invalid runner-label '{runner_label}' in {file_path}. "
+                "Must be {DEFAULT_RUNNER_LABEL} or 'self-hosted'."
+            )
 
-        return data["dependencies"]["paths"]
+        data["planned-changes"] = planned_changes
+        data["runner-label"] = runner_label
+        dependencies = data["dependencies"]["paths"]
+        
+        return {
+            "paths": dependencies,
+            "runner-label": runner_label,
+            "planned-changes": planned_changes
+        }
 
 
 def process_stack_files(base_dir):
@@ -236,7 +287,7 @@ def process_stack_files(base_dir):
     Processes stack directories and adds nodes to a graph
 
     Args:
-        base_dir: The base directory containing all of the Terraform scaks
+        base_dir (str): The base directory containing all of the Terraform stacks.
 
     Returns:
         Graph: A graph object representing all of the stacks found
@@ -246,8 +297,11 @@ def process_stack_files(base_dir):
     for file_path in stack_files:
         if file_path.endswith("dependencies.json"):
             stack_dir = f"./{os.path.relpath(os.path.dirname(file_path), base_dir)}"
-            dependencies = extract_dependencies_from_file(file_path)
-        graph.add_node(stack_dir, dependencies)
+            dependencies_info = extract_dependencies_from_file(file_path)
+            dependencies = dependencies_info["paths"]
+            runner_label = dependencies_info["runner-label"]
+            planned_changes = dependencies_info["planned-changes"]
+            graph.add_node(stack_dir, dependencies, runner_label=runner_label, planned_changes=planned_changes)
 
     return graph
 
@@ -258,8 +312,18 @@ if __name__ == "__main__":
     graph = process_stack_files(start_dir)
     resolved = graph.resolve_dependencies()
     sorted_nodes = graph.topological_sort(reverse=REVERSE_OUTPUT)
-    
+
     if DRAW_GRAPH:
         graph.generate_dot_file()
 
-    print(json.dumps([node.name for node in sorted_nodes]))
+    # Output the matrix with 'directory', 'runner_label' and 'planned_changes'.
+    matrix = [
+        {
+            "directory": node.name, 
+            "runner_label": node.runner_label, 
+            "planned_changes": node.planned_changes
+        }
+        for node in sorted_nodes
+    ]
+
+    print(json.dumps(matrix))
