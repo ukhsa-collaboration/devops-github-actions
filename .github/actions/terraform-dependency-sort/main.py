@@ -41,7 +41,11 @@ JSON_SCHEMA = {
         "planned-changes": {
             "type": "boolean",
             "default": True
-        }
+        },
+        "order": {
+            "type": "integer",
+            "default": 1
+        },
     },
     "required": ["dependencies"],
 }
@@ -321,9 +325,10 @@ if __name__ == "__main__":
         {
             "directory": node.name, 
             "runner_label": node.runner_label, 
-            "planned_changes": node.planned_changes
+            "planned_changes": node.planned_changes,
+            "order": index + 1
         }
-        for node in sorted_nodes
+        for index, node in enumerate(sorted_nodes)
     ]
 
     print(json.dumps(matrix))
