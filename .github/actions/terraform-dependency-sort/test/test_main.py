@@ -22,7 +22,7 @@ class TestDependencyResolver(unittest.TestCase):
         os.makedirs(path, exist_ok=True)
         return path
 
-    def write_json(self, dir_name, paths_content, runner_label=None, planned_changes=None, valid_json=True):
+    def write_json(self, dir_name, paths_content, skip_when_destroying=None, runner_label=None, planned_changes=None, valid_json=True):
         """
         Writes JSON to dependencies.json in dir_name.
         If valid_json is False, writes arbitrary content to simulate malformed JSON.
@@ -35,6 +35,8 @@ class TestDependencyResolver(unittest.TestCase):
                 json_content["runner-label"] = runner_label
             if planned_changes is not None:
                 json_content["planned-changes"] = planned_changes
+            if skip_when_destroying is not None:
+                json_content["skip_when_destroying"] = skip_when_destroying
         else:
             json_content = paths_content  # Malformed content
         with open(path, "w") as f:
@@ -310,6 +312,33 @@ class TestDependencyResolver(unittest.TestCase):
         expected_matrix = [
             {"directory": "./stack2", "runner_label": "ubuntu-latest", "planned_changes": False},
             {"directory": "./stack1", "runner_label": "ubuntu-latest", "planned_changes": True},
+        ]
+
+        self.assertEqual(matrix, expected_matrix)
+
+    def test_skip_destroy_is_true(self):
+        """Test that the final output includes the correct 'skip_when_destroying' values."""
+        self.write_json("stack1", ["./stack2"], planned_changes=True)
+        self.write_json("stack2", [], planned_changes=False, skip_when_destroying=True)
+
+        graph = process_stack_files(self.test_dir)
+        graph.resolve_dependencies()
+        sorted_nodes = graph.topological_sort()
+
+        # Simulate the final output
+        matrix = [
+            {
+                "directory": node.name,
+                "runner_label": node.runner_label,
+                "planned_changes": node.planned_changes,
+                "skip_when_destroying": node.skip_when_destroying
+            }
+            for node in sorted_nodes
+        ]
+
+        expected_matrix = [
+            {"directory": "./stack2", "runner_label": "ubuntu-latest", "planned_changes": False, "skip_when_destroying": True},
+            {"directory": "./stack1", "runner_label": "ubuntu-latest", "planned_changes": True, "skip_when_destroying": False},
         ]
 
         self.assertEqual(matrix, expected_matrix)
