@@ -11,7 +11,9 @@ logging.basicConfig(level=LOG_LEVEL)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--draw", action="store_true")
-parser.add_argument("-r", "--reverse", action="store_true", help="Reverse the outputted list of stacks")
+parser.add_argument(
+    "-r", "--reverse", action="store_true", help="Reverse the outputted list of stacks"
+)
 args = parser.parse_args()
 DRAW_GRAPH = args.draw
 REVERSE_OUTPUT = args.reverse
@@ -34,22 +36,10 @@ JSON_SCHEMA = {
             },
             "required": ["paths"],
         },
-        "runner-label": {
-            "type": "string",
-            "default": DEFAULT_RUNNER_LABEL
-        },
-        "planned-changes": {
-            "type": "boolean",
-            "default": True
-        },
-        "order": {
-            "type": "integer",
-            "default": 1
-        },
-        "skip_when_destroying": {
-            "type": "boolean",
-            "default": False
-        }
+        "runner-label": {"type": "string", "default": DEFAULT_RUNNER_LABEL},
+        "planned-changes": {"type": "boolean", "default": True},
+        "order": {"type": "integer", "default": 1},
+        "skip_when_destroying": {"type": "boolean", "default": False},
     },
     "required": ["dependencies"],
 }
@@ -63,7 +53,14 @@ else:
 
 
 class Node:
-    def __init__(self, name: str, base_dir: str, runner_label=DEFAULT_RUNNER_LABEL, planned_changes=True, skip_when_destroying=False):
+    def __init__(
+        self,
+        name: str,
+        base_dir: str,
+        runner_label=DEFAULT_RUNNER_LABEL,
+        planned_changes=True,
+        skip_when_destroying=False,
+    ):
         self.name = name
         self.runner_label = runner_label
         self.planned_changes = planned_changes
@@ -125,7 +122,14 @@ class Graph:
         self.nodes = {}
         self.base_dir = base_dir
 
-    def add_node(self, stack_dir: str, dependencies: list, runner_label=DEFAULT_RUNNER_LABEL, planned_changes=True, skip_when_destroying=False):
+    def add_node(
+        self,
+        stack_dir: str,
+        dependencies: list,
+        runner_label=DEFAULT_RUNNER_LABEL,
+        planned_changes=True,
+        skip_when_destroying=False,
+    ):
         """
         Add a node to the graph.
 
@@ -139,10 +143,13 @@ class Graph:
             Exception: Raises an exception if a dependency is referenced in the dependencies.json but has no physical directory
         """
         if stack_dir not in self.nodes:
-            self.nodes[stack_dir] = Node(stack_dir, 
-                                         self.base_dir, 
-                                         runner_label=runner_label, 
-                                         planned_changes=planned_changes)
+            self.nodes[stack_dir] = Node(
+                stack_dir,
+                self.base_dir,
+                runner_label=runner_label,
+                planned_changes=planned_changes,
+                skip_when_destroying=skip_when_destroying,
+            )
             logger.debug(f"Node '{stack_dir}' added with runner_label '{runner_label}'")
         else:
             # Node already exists through previous stack dependency adding the node, which would use the default values.
@@ -154,7 +161,7 @@ class Graph:
                     f"Existing: '{node.runner_label}', New: '{runner_label}'. Updating to new value."
                 )
                 node.runner_label = runner_label
-            
+
             if node.planned_changes != planned_changes:
                 logger.warning(
                     f"Runner label mismatch for '{stack_dir}'. "
@@ -167,8 +174,8 @@ class Graph:
                     f"skip_when_destroying mismatch for '{stack_dir}'. "
                     f"Existing: '{node.skip_when_destroying}', New: '{skip_when_destroying}'. Updating to new value."
                 )
-                node.skip_when_destroying = skip_when_destroying  
-        
+                node.skip_when_destroying = skip_when_destroying
+
         node = self.nodes[stack_dir]
         for dep in dependencies:
             if dep not in self.nodes:
@@ -274,14 +281,16 @@ def extract_dependencies_from_file(file_path):
             data = json.load(file)
             validate(data, JSON_SCHEMA)
         except ValidationError as e:
-            raise ValidationError(f"{file_path} failed to validate against the JSON schema: {e.message}") from e
+            raise ValidationError(
+                f"{file_path} failed to validate against the JSON schema: {e.message}"
+            ) from e
         except json.decoder.JSONDecodeError as e:
             raise ValidationError(f"{file_path} contains invalid JSON: {e.msg}") from e
-        
+
         planned_changes = data.get("planned-changes", True)
         skip_when_destroying = data.get("skip_when_destroying", False)
         runner_label = data.get("runner-label", DEFAULT_RUNNER_LABEL)
-        
+
         if runner_label not in [DEFAULT_RUNNER_LABEL, "self-hosted"]:
             raise ValidationError(
                 f"Invalid runner-label '{runner_label}' in {file_path}. "
@@ -292,12 +301,12 @@ def extract_dependencies_from_file(file_path):
         data["runner-label"] = runner_label
         data["skip_when_destroying"] = skip_when_destroying
         dependencies = data["dependencies"]["paths"]
-        
+
         return {
             "paths": dependencies,
             "runner-label": runner_label,
             "planned-changes": planned_changes,
-            "skip_when_destroying": skip_when_destroying
+            "skip_when_destroying": skip_when_destroying,
         }
 
 
@@ -321,7 +330,13 @@ def process_stack_files(base_dir):
             runner_label = dependencies_info["runner-label"]
             planned_changes = dependencies_info["planned-changes"]
             skip_when_destroying = dependencies_info["skip_when_destroying"]
-            graph.add_node(stack_dir, dependencies, runner_label=runner_label, planned_changes=planned_changes, skip_when_destroying=skip_when_destroying)
+            graph.add_node(
+                stack_dir,
+                dependencies,
+                runner_label=runner_label,
+                planned_changes=planned_changes,
+                skip_when_destroying=skip_when_destroying,
+            )
 
     return graph
 
@@ -339,11 +354,11 @@ if __name__ == "__main__":
     # Output the matrix with 'directory', 'runner_label' and 'planned_changes'.
     matrix = [
         {
-            "directory": node.name, 
-            "runner_label": node.runner_label, 
+            "directory": node.name,
+            "runner_label": node.runner_label,
             "planned_changes": node.planned_changes,
             "order": index + 1,
-            "skip_when_destroying": node.skip_when_destroying
+            "skip_when_destroying": node.skip_when_destroying,
         }
         for index, node in enumerate(sorted_nodes)
     ]
