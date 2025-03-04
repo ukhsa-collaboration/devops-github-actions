@@ -291,7 +291,7 @@ def extract_dependencies_from_file(file_path):
         skip_when_destroying = data.get("skip_when_destroying", False)
         runner_label = data.get("runner-label", DEFAULT_RUNNER_LABEL)
 
-        if runner_label not in [DEFAULT_RUNNER_LABEL, "self-hosted"]:
+        if runner_label not in [DEFAULT_RUNNER_LABEL, "self-hosted", "locationservices-api-dev-R"]:
             raise ValidationError(
                 f"Invalid runner-label '{runner_label}' in {file_path}. "
                 "Must be {DEFAULT_RUNNER_LABEL} or 'self-hosted'."
