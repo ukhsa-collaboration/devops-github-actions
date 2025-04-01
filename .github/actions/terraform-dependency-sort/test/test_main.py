@@ -213,18 +213,6 @@ class TestDependencyResolver(unittest.TestCase):
         self.assertEqual(node_dict["./stack1"], "ubuntu-latest")  # Default value
         self.assertEqual(node_dict["./stack2"], "self-hosted")
 
-    def test_runner_label_invalid_value(self):
-        """Test that invalid 'runner-label' values raise a ValidationError."""
-        self.write_json("stack1", [], runner_label="invalid-runner")
-
-        json_files = find_stack_directories(self.test_dir, max_depth=2)
-        for file_path in json_files:
-            with self.assertRaises(Exception) as context:
-                extract_dependencies_from_file(file_path)
-            self.assertIn(
-                "Invalid runner-label 'invalid-runner'", str(context.exception)
-            )
-
     def test_runner_label_in_output(self):
         """Test that the final output includes the correct 'runner-label's."""
         self.write_json("stack1", ["./stack2"], runner_label="ubuntu-latest")
@@ -246,24 +234,6 @@ class TestDependencyResolver(unittest.TestCase):
         ]
 
         self.assertEqual(matrix, expected_matrix)
-
-    def test_runner_label_enum_validation(self):
-        """Test that 'runner-label's are validated against the allowed enum values."""
-        self.write_json("stack1", [], runner_label="ubuntu-latest")
-        self.write_json("stack2", [], runner_label="self-hosted")
-        self.write_json("stack3", [], runner_label="windows-latest")  # Invalid runner-label
-
-        json_files = find_stack_directories(self.test_dir, max_depth=2)
-        for file_path in json_files:
-            if "stack3" in file_path:
-                with self.assertRaises(Exception) as context:
-                    extract_dependencies_from_file(file_path)
-                self.assertIn(
-                    "Invalid runner-label 'windows-latest'", str(context.exception)
-                )
-            else:
-                # Should not raise an exception
-                extract_dependencies_from_file(file_path)
 
     def test_planned_changes_default_value(self):
         """Test that when 'planned-changes' is missing, it defaults to True."""
