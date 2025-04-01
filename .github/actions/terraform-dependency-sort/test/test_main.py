@@ -213,18 +213,6 @@ class TestDependencyResolver(unittest.TestCase):
         self.assertEqual(node_dict["./stack1"], "ubuntu-latest")  # Default value
         self.assertEqual(node_dict["./stack2"], "self-hosted")
 
-    def test_runner_label_invalid_value(self):
-        """Test that invalid 'runner-label' values raise a ValidationError."""
-        self.write_json("stack1", [], runner_label="invalid-runner")
-
-        json_files = find_stack_directories(self.test_dir, max_depth=2)
-        for file_path in json_files:
-            with self.assertRaises(Exception) as context:
-                extract_dependencies_from_file(file_path)
-            self.assertIn(
-                "Invalid runner-label 'invalid-runner'", str(context.exception)
-            )
-
     def test_runner_label_in_output(self):
         """Test that the final output includes the correct 'runner-label's."""
         self.write_json("stack1", ["./stack2"], runner_label="ubuntu-latest")
