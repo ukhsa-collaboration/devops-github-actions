@@ -353,6 +353,7 @@ if __name__ == "__main__":
             "planned_changes": node.planned_changes,
             "order": index + 1,
             "skip_when_destroying": node.skip_when_destroying,
+            "dependencies": [dep_node.name for dep_node in node.edges]
         }
         for index, node in enumerate(sorted_nodes)
     ]
