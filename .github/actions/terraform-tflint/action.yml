@@ -35,6 +35,8 @@ runs:
     - name: Verify and initialize TFLint with specified configuration file
       id: install_check
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         echo "Initiliaze TFLint with ${{ inputs.tflint_config }}"
         tflint --init --config "${{ inputs.tflint_config }}"
