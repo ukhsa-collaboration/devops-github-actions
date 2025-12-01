@@ -313,5 +313,33 @@ class TestDependencyResolver(unittest.TestCase):
 
         self.assertEqual(matrix, expected_matrix)
 
+    def test_dependencies_in_output(self):
+        """Test that the final output dependencies field matches what was declared in each stack's file."""
+        self.write_json("stack1", ["./stack2"])
+        self.write_json("stack2", ["./stack3"])
+        self.write_json("stack3", [])
+
+        graph = process_stack_files(self.test_dir)
+        graph.resolve_dependencies()
+        sorted_nodes = graph.topological_sort()
+
+        matrix = [
+            {
+                "directory": node.name,
+                "dependencies": [dep_node.name for dep_node in node.edges]
+            }
+            for node in sorted_nodes
+        ]
+
+        deps_dict = {item["directory"]: item["dependencies"] for item in matrix}
+
+        self.assertIn("./stack1", deps_dict)
+        self.assertIn("./stack2", deps_dict)
+        self.assertIn("./stack3", deps_dict)
+
+        self.assertEqual(deps_dict["./stack1"], ["./stack2"])
+        self.assertEqual(deps_dict["./stack2"], ["./stack3"])
+        self.assertEqual(deps_dict["./stack3"], [])
+
 if __name__ == '__main__':
     unittest.main()
