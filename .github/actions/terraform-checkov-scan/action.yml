@@ -37,7 +37,7 @@ runs:
         fi
 
     - uses: actions/setup-python@v5
-      if: ${{ steps.install_check.outputs.python_installed == 'False' && steps.install_check.outputs.installed == 'False' }}
+      if: ${{ steps.install_check.outputs.python_installed == 'False' }}
       with:
         python-version: "3.12"
 
@@ -57,9 +57,29 @@ runs:
           checkov --framework terraform_plan --download-external-modules true --deep-analysis --output cli --output sarif --output-file-path console,results.sarif --repo-root-for-plan-enrichment "$DIRECTORY" --file "$TFPLAN_FILE"
         else
           fail_alerts=$(cat "$GITHUB_ACTION_PATH"/high-criticals.txt | tr '\n' ',' | sed 's/,$//')
-          checkov --framework terraform --hard-fail-on "$fail_alerts" --output cli --output sarif --output-file-path console,results.sarif --directory "$DIRECTORY"
+          checkov --framework terraform --hard-fail-on "$fail_alerts" --output cli --output sarif --output json --output-file-path console,results.sarif,results.json --directory "$DIRECTORY"
         fi
 
+    - name: Summarise High/Critical Checkov Findings
+      shell: bash
+      if: ${{ always() }}
+      run: |
+        count=$(jq '[.results.failed_checks[] | select(.severity == "HIGH" or .severity == "CRITICAL")] | length' results.json)
+
+        echo "### High or Critical Checkov Issues" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+
+        if [[ "$count" -gt 0 ]]; then
+          jq -r '
+            .results.failed_checks[]
+            | select(.severity == "HIGH" or .severity == "CRITICAL")
+            | "- [`\(.check_id)`] **\(.check_name)** in resource `\(.resource)` at `\(.file_path):\(.file_line_range[0])`"
+          ' results.json >> "$GITHUB_STEP_SUMMARY"
+
+          echo "$count high or critical Checkov issues detected."
+          exit 1
+        fi
+  
       # This would normally use github/codeql-action/upload-sarif@v2
       # Is always skipped as we don't currently enable Advanced Security.
     - name: Upload Checkov results to Security Tab
