@@ -28,7 +28,7 @@ runs:
     - uses: actions/setup-python@v5
       if: ${{ steps.install_check.outputs.python_installed == 'False' }}
       with:
-        python-version: '3.12'
+        python-version: '3.14'
 
     - name: Install requirements.txt
       shell: bash

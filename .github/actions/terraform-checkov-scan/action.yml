@@ -39,7 +39,7 @@ runs:
     - uses: actions/setup-python@v5
       if: ${{ steps.install_check.outputs.python_installed == 'False' && steps.install_check.outputs.installed == 'False' }}
       with:
-        python-version: "3.12"
+        python-version: "3.14"
 
     - name: Install requirements.txt
       if: ${{ steps.install_check.outputs.checkov_installed == 'False' }}
