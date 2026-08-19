@@ -36,7 +36,7 @@ runs:
   using: "composite"
   steps:
     - name: create a check in_progress
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       if: ${{ inputs.check-run-id == null }}
       id: create-check
       with:
@@ -71,7 +71,7 @@ runs:
           return check.data.id
 
     - name: update existing check
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       id: update-check
       if: ${{ inputs.check-run-id != null }}
       with:
